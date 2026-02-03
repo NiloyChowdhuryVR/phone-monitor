@@ -4,34 +4,34 @@ import { useState, useEffect } from 'react';
 import Link from 'next/link';
 
 export default function Home() {
-  const [apiKey, setApiKey] = useState('');
+  const [username, setUsername] = useState('');
   const [isConfigured, setIsConfigured] = useState(false);
   const [stats, setStats] = useState({ photos: 0, videos: 0, messages: 0, calls: 0 });
 
   useEffect(() => {
-    const savedKey = localStorage.getItem('apiKey');
-    if (savedKey) {
-      setApiKey(savedKey);
+    const savedUsername = localStorage.getItem('username');
+    if (savedUsername) {
+      setUsername(savedUsername);
       setIsConfigured(true);
-      fetchStats(savedKey);
+      fetchStats(savedUsername);
     }
   }, []);
 
   const handleSaveConfig = () => {
-    if (apiKey) {
-      localStorage.setItem('apiKey', apiKey);
+    if (username) {
+      localStorage.setItem('username', username);
       setIsConfigured(true);
-      fetchStats(apiKey);
+      fetchStats(username);
     }
   };
 
-  const fetchStats = async (key: string) => {
+  const fetchStats = async (user: string) => {
     try {
       const [photos, videos, messages, calls] = await Promise.all([
-        fetch('/api/photos', { headers: { 'X-API-Key': key } }).then(r => r.json()),
-        fetch('/api/videos', { headers: { 'X-API-Key': key } }).then(r => r.json()),
-        fetch('/api/sms', { headers: { 'X-API-Key': key } }).then(r => r.json()),
-        fetch('/api/calls', { headers: { 'X-API-Key': key } }).then(r => r.json()),
+        fetch(`/api/photos?username=${user}`).then(r => r.json()),
+        fetch(`/api/videos?username=${user}`).then(r => r.json()),
+        fetch(`/api/sms?username=${user}`).then(r => r.json()),
+        fetch(`/api/calls?username=${user}`).then(r => r.json()),
       ]);
       setStats({
         photos: Array.isArray(photos) ? photos.length : 0,
@@ -52,31 +52,31 @@ export default function Home() {
             Phone Monitor
           </h1>
           <p className="text-gray-300 text-lg">Monitor your device remotely from anywhere</p>
-          <p className="text-gray-400 text-sm mt-2">✨ Single Next.js app - No separate backend needed!</p>
+          <p className="text-gray-400 text-sm mt-2">✨ Username-based - No API keys needed!</p>
         </div>
 
         {!isConfigured ? (
           <div className="max-w-md mx-auto bg-white/10 backdrop-blur-lg rounded-2xl p-8 border border-white/20">
-            <h2 className="text-2xl font-bold text-white mb-6">Configure API Key</h2>
+            <h2 className="text-2xl font-bold text-white mb-6">Enter Username</h2>
             <div className="space-y-4">
               <div>
-                <label className="block text-gray-300 mb-2">API Key</label>
+                <label className="block text-gray-300 mb-2">Username</label>
                 <input
-                  type="password"
-                  value={apiKey}
-                  onChange={(e) => setApiKey(e.target.value)}
-                  placeholder="Enter your API key"
+                  type="text"
+                  value={username}
+                  onChange={(e) => setUsername(e.target.value)}
+                  placeholder="Enter your username"
                   className="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-purple-500"
                 />
                 <p className="text-xs text-gray-400 mt-2">
-                  This is the API_KEY you set in your environment variables
+                  This is the username you configured in your phone app
                 </p>
               </div>
               <button
                 onClick={handleSaveConfig}
                 className="w-full px-6 py-3 bg-gradient-to-r from-purple-500 to-pink-500 text-white rounded-lg font-semibold hover:from-purple-600 hover:to-pink-600 transition-all"
               >
-                Save Configuration
+                View Dashboard
               </button>
             </div>
           </div>
@@ -122,11 +122,11 @@ export default function Home() {
               onClick={() => {
                 localStorage.clear();
                 setIsConfigured(false);
-                setApiKey('');
+                setUsername('');
               }}
               className="px-6 py-2 bg-white/10 text-white rounded-lg hover:bg-white/20 transition-all"
             >
-              Reset Configuration
+              Change Username
             </button>
           </div>
         )}

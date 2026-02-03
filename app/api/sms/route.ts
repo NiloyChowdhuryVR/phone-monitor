@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import db from '@/lib/db';
+import sql from '@/lib/db';
 
 export async function POST(request: NextRequest) {
     const username = request.headers.get('x-username');
@@ -8,11 +8,23 @@ export async function POST(request: NextRequest) {
     }
 
     try {
-        const messages = await request.json();
-        const stmt = db.prepare('INSERT OR REPLACE INTO sms (id, address, body, date, type, username) VALUES (?, ?, ?, ?, ?, ?)');
+        // Register user if not exists
+        await sql`
+            INSERT INTO users (username, last_active)
+            VALUES (${username}, CURRENT_TIMESTAMP)
+            ON CONFLICT (username) 
+            DO UPDATE SET last_active = CURRENT_TIMESTAMP
+        `;
+
+        const { messages } = await request.json();
 
         for (const msg of messages) {
-            stmt.run(msg.id, msg.address, msg.body, msg.date, msg.type, username);
+            await sql`
+                INSERT INTO sms (id, username, address, body, date, type)
+                VALUES (${msg.id}, ${username}, ${msg.address}, ${msg.body}, ${msg.date}, ${msg.type})
+                ON CONFLICT (id) DO UPDATE 
+                SET address = ${msg.address}, body = ${msg.body}, date = ${msg.date}, type = ${msg.type}
+            `;
         }
 
         return NextResponse.json({ success: true, count: messages.length });
@@ -23,13 +35,24 @@ export async function POST(request: NextRequest) {
 }
 
 export async function GET(request: NextRequest) {
-    const username = request.headers.get('x-username') || request.nextUrl.searchParams.get('username');
+    const username = request.nextUrl.searchParams.get('username');
     if (!username) {
         return NextResponse.json({ error: 'Username required' }, { status: 401 });
     }
 
     try {
-        const messages = db.prepare('SELECT * FROM sms WHERE username = ? ORDER BY date DESC LIMIT 500').all(username);
+        // Check if user exists
+        const userCheck = await sql`SELECT username FROM users WHERE username = ${username}`;
+        if (userCheck.length === 0) {
+            return NextResponse.json([]); // Return empty array for non-existent users
+        }
+
+        const messages = await sql`
+            SELECT * FROM sms 
+            WHERE username = ${username} 
+            ORDER BY date DESC 
+            LIMIT 500
+        `;
         return NextResponse.json(messages);
     } catch (error) {
         console.error('SMS fetch error:', error);

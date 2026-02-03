@@ -1,16 +1,24 @@
 import { NextRequest, NextResponse } from 'next/server';
-import db from '@/lib/db';
-
-const API_KEY = process.env.API_KEY || 'your-secret-api-key-change-this';
+import sql from '@/lib/db';
 
 export async function GET(request: NextRequest) {
-    const apiKey = request.headers.get('x-api-key');
-    if (apiKey !== API_KEY) {
-        return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    const username = request.nextUrl.searchParams.get('username');
+    if (!username) {
+        return NextResponse.json({ error: 'Username required' }, { status: 401 });
     }
 
     try {
-        const videos = db.prepare('SELECT * FROM media WHERE type = ? ORDER BY uploaded_at DESC').all('video');
+        // Check if user exists
+        const userCheck = await sql`SELECT username FROM users WHERE username = ${username}`;
+        if (userCheck.length === 0) {
+            return NextResponse.json([]); // Return empty array for non-existent users
+        }
+
+        const videos = await sql`
+            SELECT * FROM media 
+            WHERE username = ${username} AND type = 'video'
+            ORDER BY uploaded_at DESC
+        `;
         return NextResponse.json(videos);
     } catch (error) {
         console.error('Videos fetch error:', error);
